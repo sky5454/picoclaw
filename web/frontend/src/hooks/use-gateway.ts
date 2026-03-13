@@ -13,7 +13,7 @@ import { gatewayAtom } from "@/store"
 let sseInitialized = false
 
 export function useGateway() {
-  const [{ status: state, canStart }, setGateway] = useAtom(gatewayAtom)
+  const [{ status: state, canStart, startReason, passphraseState }, setGateway] = useAtom(gatewayAtom)
   const [loading, setLoading] = useState(false)
 
   const applyGatewayStatus = useCallback(
@@ -22,6 +22,8 @@ export function useGateway() {
         ...prev,
         status: data.gateway_status ?? "unknown",
         canStart: data.gateway_start_allowed ?? true,
+        startReason: data.gateway_start_reason ?? "",
+        passphraseState: data.passphrase_state ?? "",
       }))
     },
     [setGateway],
@@ -38,6 +40,8 @@ export function useGateway() {
         setGateway({
           status: "unknown",
           canStart: true,
+          startReason: "",
+          passphraseState: "",
         })
       })
 
@@ -117,5 +121,5 @@ export function useGateway() {
     }
   }, [])
 
-  return { state, loading, canStart, start, stop }
+  return { state, loading, canStart, startReason, passphraseState, start, stop }
 }
