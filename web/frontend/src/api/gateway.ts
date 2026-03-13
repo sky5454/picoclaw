@@ -1,15 +1,21 @@
 // API client for gateway process management.
 
 interface GatewayStatusResponse {
-  gateway_status: "running" | "starting" | "stopped" | "error"
+  gateway_status: "running" | "starting" | "restarting" | "stopped" | "error"
   gateway_start_allowed?: boolean
   gateway_start_reason?: string
   passphrase_state?: "" | "pending" | "failed"
+  gateway_restart_required?: boolean
   pid?: number
+  boot_default_model?: string
+  config_default_model?: string
+  [key: string]: unknown
+}
+
+interface GatewayLogsResponse {
   logs?: string[]
   log_total?: number
   log_run_id?: number
-  [key: string]: unknown
 }
 
 interface GatewayActionResponse {
@@ -29,10 +35,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export async function getGatewayStatus(options?: {
+export async function getGatewayStatus(): Promise<GatewayStatusResponse> {
+  return request<GatewayStatusResponse>("/api/gateway/status")
+}
+
+export async function getGatewayLogs(options?: {
   log_offset?: number
   log_run_id?: number
-}): Promise<GatewayStatusResponse> {
+}): Promise<GatewayLogsResponse> {
   const params = new URLSearchParams()
   if (options?.log_offset !== undefined) {
     params.set("log_offset", options.log_offset.toString())
@@ -41,7 +51,7 @@ export async function getGatewayStatus(options?: {
     params.set("log_run_id", options.log_run_id.toString())
   }
   const queryString = params.toString() ? `?${params.toString()}` : ""
-  return request<GatewayStatusResponse>(`/api/gateway/status${queryString}`)
+  return request<GatewayLogsResponse>(`/api/gateway/logs${queryString}`)
 }
 
 export async function startGateway(): Promise<GatewayActionResponse> {
@@ -68,4 +78,8 @@ export async function clearGatewayLogs(): Promise<GatewayActionResponse> {
   })
 }
 
-export type { GatewayStatusResponse, GatewayActionResponse }
+export type {
+  GatewayStatusResponse,
+  GatewayLogsResponse,
+  GatewayActionResponse,
+}

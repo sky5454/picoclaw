@@ -1,33 +1,30 @@
-import { useAtom } from "jotai"
+import { useAtomValue } from "jotai"
 import { useCallback, useEffect, useState } from "react"
 
 import {
   type GatewayStatusResponse,
   getGatewayStatus,
+  restartGateway,
   startGateway,
   stopGateway,
 } from "@/api/gateway"
-import { gatewayAtom } from "@/store"
+import {
+  applyGatewayStatusToStore,
+  gatewayAtom,
+  updateGatewayStore,
+} from "@/store"
 
 // Global variable to ensure we only have one SSE connection
 let sseInitialized = false
 
 export function useGateway() {
-  const [{ status: state, canStart, startReason, passphraseState }, setGateway] = useAtom(gatewayAtom)
+  const gateway = useAtomValue(gatewayAtom)
+  const { status: state, canStart, startReason, passphraseState, restartRequired } = gateway
   const [loading, setLoading] = useState(false)
 
-  const applyGatewayStatus = useCallback(
-    (data: GatewayStatusResponse) => {
-      setGateway((prev) => ({
-        ...prev,
-        status: data.gateway_status ?? "unknown",
-        canStart: data.gateway_start_allowed ?? true,
-        startReason: data.gateway_start_reason ?? "",
-        passphraseState: data.passphrase_state ?? "",
-      }))
-    },
-    [setGateway],
-  )
+  const applyGatewayStatus = useCallback((data: GatewayStatusResponse) => {
+    applyGatewayStatusToStore(data)
+  }, [])
 
   // Initialize global SSE connection once
   useEffect(() => {
@@ -37,11 +34,12 @@ export function useGateway() {
     getGatewayStatus()
       .then((data) => applyGatewayStatus(data))
       .catch(() => {
-        setGateway({
+        updateGatewayStore({
           status: "unknown",
           canStart: true,
           startReason: "",
           passphraseState: "",
+          restartRequired: false,
         })
       })
 
@@ -63,14 +61,7 @@ export function useGateway() {
           data.gateway_status ||
           typeof data.gateway_start_allowed === "boolean"
         ) {
-          setGateway((prev) => ({
-            ...prev,
-            status: data.gateway_status ?? prev.status,
-            canStart:
-              typeof data.gateway_start_allowed === "boolean"
-                ? data.gateway_start_allowed
-                : prev.canStart,
-          }))
+          applyGatewayStatus(data)
         }
       } catch {
         // ignore
@@ -79,7 +70,9 @@ export function useGateway() {
 
     es.onerror = () => {
       // EventSource will auto-reconnect
-      setGateway((prev) => ({ ...prev, status: "unknown" }))
+      updateGatewayStore((prev) =>
+        prev.status === "restarting" ? {} : { status: "unknown" },
+      )
     }
 
     return () => {
@@ -87,7 +80,7 @@ export function useGateway() {
       es.close()
       sseInitialized = false
     }
-  }, [applyGatewayStatus, setGateway])
+  }, [applyGatewayStatus])
 
   const start = useCallback(async () => {
     if (!canStart) return
@@ -96,19 +89,19 @@ export function useGateway() {
     try {
       await startGateway()
       // SSE will push the real state changes, but set optimistic state
-      setGateway((prev) => ({ ...prev, status: "starting" }))
+      updateGatewayStore({ status: "starting" })
     } catch (err) {
       console.error("Failed to start gateway:", err)
       try {
         const status = await getGatewayStatus()
         applyGatewayStatus(status)
       } catch {
-        setGateway((prev) => ({ ...prev, status: "unknown" }))
+        updateGatewayStore({ status: "unknown" })
       }
     } finally {
       setLoading(false)
     }
-  }, [applyGatewayStatus, canStart, setGateway])
+  }, [applyGatewayStatus, canStart])
 
   const stop = useCallback(async () => {
     setLoading(true)
@@ -121,5 +114,37 @@ export function useGateway() {
     }
   }, [])
 
-  return { state, loading, canStart, startReason, passphraseState, start, stop }
+  const restart = useCallback(async () => {
+    if (state !== "running") return
+
+    const previousState = state
+    const previousCanStart = canStart
+    const previousRestartRequired = restartRequired
+
+    setLoading(true)
+    updateGatewayStore({
+      status: "restarting",
+      restartRequired: false,
+    })
+
+    try {
+      await restartGateway()
+    } catch (err) {
+      console.error("Failed to restart gateway:", err)
+      try {
+        const status = await getGatewayStatus()
+        applyGatewayStatus(status)
+      } catch {
+        updateGatewayStore({
+          status: previousState,
+          canStart: previousCanStart,
+          restartRequired: previousRestartRequired,
+        })
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [applyGatewayStatus, canStart, restartRequired, state])
+
+  return { state, loading, canStart, startReason, passphraseState, restartRequired, start, stop, restart }
 }

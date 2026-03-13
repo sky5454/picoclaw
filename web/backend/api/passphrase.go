@@ -47,7 +47,7 @@ func (h *Handler) handleSetPassphrase(w http.ResponseWriter, r *http.Request) {
 		if isGatewayProcessAliveLocked() {
 			return
 		}
-		pid, err := h.startGatewayLocked()
+		pid, err := h.startGatewayLocked("starting")
 		if err != nil {
 			log.Printf("Failed to start gateway after passphrase unlock: %v", err)
 			// startGatewayLocked failed before spawning the process, so the exit
