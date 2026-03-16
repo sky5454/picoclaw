@@ -109,11 +109,18 @@ func (h *Handler) gatewayStartReady() (bool, string, error) {
 		return false, "", fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// If passphrase is required but not yet set, report that first so the
+	// frontend can prompt the user — even before checking the model name.
+	if h.passphraseStore != nil && !h.passphraseStore.IsSet() {
+		if configHasEncryptedCredentials(cfg) {
+			return false, "", credential.ErrPassphraseRequired
+		}
+	}
+
 	modelName := strings.TrimSpace(cfg.Agents.Defaults.GetModelName())
 	if modelName == "" {
 		return false, "no default model configured", nil
 	}
-
 	modelCfg := lookupModelConfig(cfg, modelName)
 	if modelCfg == nil {
 		return false, fmt.Sprintf("default model %q is invalid", modelName), nil
@@ -355,12 +362,14 @@ func (h *Handler) startGatewayLocked(initialStatus string) (int, error) {
 
 		// If we had an active passphrase attempt and the gateway crashed,
 		// mark passphrase as failed so the frontend can show an error.
+		// But do NOT clear the passphrase store: the gateway may have failed
+		// for reasons unrelated to the passphrase (e.g. missing default model,
+		// config error). Keeping the passphrase lets the user access
+		// /api/config and /api/models to fix the issue without re-entering it.
 		if exitErr != nil {
 			h.passphraseMu.Lock()
 			if h.passphraseLastState == passphraseStatePending {
 				h.passphraseLastState = passphraseStateFailed
-				// Clear the bad passphrase so user must re-enter
-				h.passphraseStore.Clear()
 			}
 			h.passphraseMu.Unlock()
 		} else {
@@ -832,4 +841,17 @@ func filterEnv(environ []string, key string) []string {
 		}
 	}
 	return result
+}
+
+// configHasEncryptedCredentials reports whether any model in cfg has an
+// api_key that uses the enc:// scheme, meaning a passphrase is required to
+// decrypt it before the gateway can start.
+func configHasEncryptedCredentials(cfg *config.Config) bool {
+	const encScheme = "enc://"
+	for _, m := range cfg.ModelList {
+		if strings.HasPrefix(m.APIKey, encScheme) {
+			return true
+		}
+	}
+	return false
 }

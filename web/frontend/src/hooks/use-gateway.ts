@@ -111,7 +111,6 @@ export function useGateway() {
       updateGatewayStore({
         status: "stopped",
         canStart: true,
-        restartRequired: false,
       })
     } catch (err) {
       console.error("Failed to stop gateway:", err)

@@ -52,10 +52,12 @@ func (h *Handler) handleSetPassphrase(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Failed to start gateway after passphrase unlock: %v", err)
 			// startGatewayLocked failed before spawning the process, so the exit
 			// goroutine will never run. Transition pending → failed manually.
+			// Do NOT clear the passphrase: the failure may be a config issue
+			// (e.g. missing default model), not a wrong passphrase. Keeping it
+			// allows the user to access /api/config to fix the problem.
 			h.passphraseMu.Lock()
 			if h.passphraseLastState == passphraseStatePending {
 				h.passphraseLastState = passphraseStateFailed
-				h.passphraseStore.Clear()
 			}
 			h.passphraseMu.Unlock()
 			return
