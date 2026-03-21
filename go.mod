@@ -3,8 +3,8 @@ module github.com/sipeed/picoclaw
 go 1.25.8
 
 require (
-	github.com/BurntSushi/toml v1.6.0
 	fyne.io/systray v1.12.0
+	github.com/BurntSushi/toml v1.6.0
 	github.com/adhocore/gronx v1.19.6
 	github.com/anthropics/anthropic-sdk-go v1.26.0
 	github.com/bwmarrin/discordgo v0.29.0
@@ -21,7 +21,7 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.4.1
 	github.com/mymmrac/telego v1.7.0
 	github.com/open-dingtalk/dingtalk-stream-sdk-go v0.9.1
-	github.com/openai/openai-go/v3 v3.22.0
+	github.com/openai/openai-go/v3 v3.29.0
 	github.com/rivo/tview v0.42.0
 	github.com/rs/zerolog v1.34.0
 	github.com/slack-go/slack v0.17.3
