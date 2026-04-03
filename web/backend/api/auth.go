@@ -98,7 +98,7 @@ func (h *launcherAuthHandlers) handleLogin(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	in := strings.TrimSpace(body.Password)
-	ok := false
+	var ok bool
 
 	if h.isStoreInitialized(r.Context()) {
 		// Bcrypt path: verify against the stored hash.
