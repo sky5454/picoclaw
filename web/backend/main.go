@@ -50,8 +50,6 @@ var (
 	// Includes ?token= for same-machine dashboard login; keep serverAddr without secrets for other use.
 	browserLaunchURL string
 	apiHandler       *api.Handler
-	// launcherDashboardTokenForClipboard is read by the system tray "copy token" action (GUI mode).
-	launcherDashboardTokenForClipboard string
 
 	noBrowser *bool
 )
@@ -228,7 +226,6 @@ func main() {
 		logger.Fatalf("Dashboard auth setup failed: %v", dashErr)
 	}
 	dashboardSessionCookie := middleware.SessionCookieValue(dashboardSigningKey, dashboardToken)
-	launcherDashboardTokenForClipboard = dashboardToken
 
 	// Open the bcrypt password store (creates the DB file on first run).
 	authStore, authStoreErr := dashboardauth.New(picoHome)
