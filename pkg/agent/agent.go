@@ -495,7 +495,8 @@ func (al *AgentLoop) runAgentLoop(
 		newTurnContext(opts.Dispatch.InboundContext, opts.Dispatch.RouteResult, opts.Dispatch.SessionScope),
 	)
 	ts := newTurnState(agent, opts, turnScope)
-	result, err := al.runTurn(ctx, ts)
+	pipeline := NewPipeline(al)
+	result, err := al.runTurn(ctx, ts, pipeline)
 	if err != nil {
 		return "", err
 	}
