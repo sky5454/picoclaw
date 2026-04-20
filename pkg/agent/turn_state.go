@@ -141,6 +141,10 @@ type turnExecution struct {
 
 	// Phase tracking
 	phase LLMPhase
+
+	// Abort signaling for coordinator (set by Pipeline methods)
+	abortedByHardAbort bool // true when hard abort triggered during LLM/tools
+	abortedByHook      bool // true when HookActionAbortTurn triggered
 }
 
 // newTurnExecution creates a turnExecution initialized from turnState and options.

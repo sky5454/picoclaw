@@ -37,6 +37,7 @@ func (p *Pipeline) ExecuteTools(
 toolLoop:
 	for i, tc := range normalizedToolCalls {
 		if ts.hardAbortRequested() {
+			exec.abortedByHardAbort = true
 			return ToolControlBreak
 		}
 
@@ -288,10 +289,11 @@ toolLoop:
 				}
 				continue
 			case HookActionAbortTurn:
-				_ = ts.requestHardAbort()
+				exec.abortedByHook = true
 				return ToolControlBreak
 			case HookActionHardAbort:
 				_ = ts.requestHardAbort()
+				exec.abortedByHardAbort = true
 				return ToolControlBreak
 			}
 		}
@@ -426,6 +428,7 @@ toolLoop:
 		toolDuration := time.Since(toolStart)
 
 		if ts.hardAbortRequested() {
+			exec.abortedByHardAbort = true
 			return ToolControlBreak
 		}
 
@@ -449,10 +452,11 @@ toolLoop:
 					}
 				}
 			case HookActionAbortTurn:
-				_ = ts.requestHardAbort()
+				exec.abortedByHook = true
 				return ToolControlBreak
 			case HookActionHardAbort:
 				_ = ts.requestHardAbort()
+				exec.abortedByHardAbort = true
 				return ToolControlBreak
 			}
 		}
@@ -633,6 +637,7 @@ toolLoop:
 				"pending_count":       len(exec.pendingMessages),
 				"allResponsesHandled": exec.allResponsesHandled,
 			})
+		exec.allResponsesHandled = false
 		return ToolControlContinue
 	}
 
@@ -644,6 +649,7 @@ toolLoop:
 				"steering_count": len(steerMsgs),
 			})
 		exec.pendingMessages = append(exec.pendingMessages, steerMsgs...)
+		exec.allResponsesHandled = false
 		return ToolControlContinue
 	}
 

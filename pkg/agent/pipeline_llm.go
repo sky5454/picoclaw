@@ -104,9 +104,11 @@ func (p *Pipeline) CallLLM(
 				exec.llmOpts = llmReq.Options
 			}
 		case HookActionAbortTurn:
-			return ControlBreak, al.hookAbortError(ts, "before_llm", decision)
+			exec.abortedByHook = true
+			return ControlBreak, nil
 		case HookActionHardAbort:
 			_ = ts.requestHardAbort()
+			exec.abortedByHardAbort = true
 			return ControlBreak, nil
 		}
 	}
@@ -191,6 +193,7 @@ func (p *Pipeline) CallLLM(
 		}
 		if ts.hardAbortRequested() && errors.Is(err, context.Canceled) {
 			_ = ts.requestHardAbort()
+			exec.abortedByHardAbort = true
 			return ControlBreak, nil
 		}
 
@@ -364,9 +367,11 @@ func (p *Pipeline) CallLLM(
 				exec.response = llmResp.Response
 			}
 		case HookActionAbortTurn:
-			return ControlBreak, al.hookAbortError(ts, "after_llm", decision)
+			exec.abortedByHook = true
+			return ControlBreak, nil
 		case HookActionHardAbort:
 			_ = ts.requestHardAbort()
+			exec.abortedByHardAbort = true
 			return ControlBreak, nil
 		}
 	}

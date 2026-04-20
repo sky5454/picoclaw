@@ -147,6 +147,9 @@ func (al *AgentLoop) runTurn(ctx context.Context, ts *turnState, pipeline *Pipel
 					TotalContentLen: totalContentLen,
 				},
 			)
+			// Clear exec.pendingMessages after injection so InitialSteeringMessages
+			// are not re-injected on subsequent iterations (Issue 2 fix).
+			exec.pendingMessages = nil
 		}
 		// Always sync messages into exec.messages so CallLLM sees the updated state
 		exec.messages = messages
@@ -169,12 +172,20 @@ func (al *AgentLoop) runTurn(ctx context.Context, ts *turnState, pipeline *Pipel
 		pendingMessages = exec.pendingMessages
 		finalContent = exec.finalContent
 
-		logger.InfoCF("agent", "SWITCH ctrl", map[string]any{"ctrl": int(ctrl), "iter": iteration})
 		switch ctrl {
 		case ControlContinue:
-			logger.InfoCF("agent", "CASE ControlContinue", map[string]any{"iter": iteration})
 			continue
 		case ControlBreak:
+			// Hard abort: delegate to abortTurn (sets TurnEndStatusAborted)
+			if exec.abortedByHardAbort {
+				turnStatus = TurnEndStatusAborted
+				return al.abortTurn(ts)
+			}
+			// Hook abort (HookActionAbortTurn): sets TurnEndStatusError, returns error
+			if exec.abortedByHook {
+				turnStatus = TurnEndStatusError
+				return turnResult{}, fmt.Errorf("hook requested turn abort")
+			}
 			// Ensure empty response falls back to DefaultResponse
 			if finalContent == "" {
 				finalContent = ts.opts.DefaultResponse
@@ -190,16 +201,21 @@ func (al *AgentLoop) runTurn(ctx context.Context, ts *turnState, pipeline *Pipel
 				messages = exec.messages
 				continue
 			case ToolControlBreak:
+				// Hard abort: delegate to abortTurn (sets TurnEndStatusAborted)
+				if exec.abortedByHardAbort {
+					turnStatus = TurnEndStatusAborted
+					return al.abortTurn(ts)
+				}
+				// Hook abort (HookActionAbortTurn): sets TurnEndStatusError, returns error
+				if exec.abortedByHook {
+					turnStatus = TurnEndStatusError
+					return turnResult{}, fmt.Errorf("hook requested turn abort")
+				}
 				// ExecuteTools returned ControlBreak:
 				// - allResponsesHandled=true: finalize without DefaultResponse (exec.finalContent empty)
 				// - allResponsesHandled=false: coordinator applies DefaultResponse before finalize
 				if exec.allResponsesHandled {
 					finalContent = ""
-				}
-				// Check hard abort after tool execution (may have been set during ExecuteTools)
-				if ts.hardAbortRequested() {
-					turnStatus = TurnEndStatusAborted
-					return al.abortTurn(ts)
 				}
 				return pipeline.Finalize(ctx, turnCtx, ts, exec, turnStatus, finalContent)
 			}
