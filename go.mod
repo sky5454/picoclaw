@@ -15,6 +15,7 @@ require (
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/creack/pty v1.1.24
+	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/ergochat/irc-go v0.6.0
 	github.com/ergochat/readline v0.1.3
 	github.com/gomarkdown/markdown v0.0.0-20260411013819-759bbc3e3207
@@ -33,7 +34,7 @@ require (
 	github.com/pion/rtp v1.10.1
 	github.com/pion/webrtc/v3 v3.3.6
 	github.com/rs/zerolog v1.35.1
-	github.com/slack-go/slack v0.17.3
+	github.com/slack-go/slack v0.27.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
@@ -76,7 +77,6 @@ require (
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/eclipse/paho.mqtt.golang v1.5.1 // indirect
 	github.com/elliotchance/orderedmap/v3 v3.1.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
